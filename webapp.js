@@ -14,19 +14,30 @@ var pool = mysql.createPool({
 aplicacion.use(bodyParser.json())
 aplicacion.use(bodyParser.urlencoded({ extended: true }))
 
-aplicacion.get('/api/v1/publicaciones', function (peticion, respuesta) {
-
+aplicacion.get('/api/v1/publicaciones/', function(peticion, respuesta) {
   pool.getConnection(function(err, connection) {
-
-    const query = `SELECT * FROM publicaciones`
-    connection.query(query, function (error, filas, campos) {
-      respuesta.json({data: filas})
-    })
-    connection.release()
-
+  let query
+  const busqueda = (peticion.query.busqueda) ? peticion.query.busqueda : ""
+  if (busqueda == "") {
+  query = `SELECT * FROM publicaciones`
+  } else {
+  query = ` SELECT * FROM publicaciones WHERE
+  titulo LIKE '%${busqueda}%' OR
+  resumen LIKE '%${busqueda}%' OR
+  contenido LIKE '%${busqueda}%'
+  `
+  }
+  connection.query(query, function(error, filas, campos) {
+  if (filas.length > 0) {
+  respuesta.json({ data: filas })
+  } else {
+  respuesta.status(404)
+  respuesta.send({ errors: ["No se encuentra esa publicacion"] })
+  }
   })
-
-})
+  connection.release()
+  })
+  })
 
 aplicacion.get('/api/v1/publicaciones/:id', function (peticion, respuesta) {
 
@@ -52,3 +63,4 @@ aplicacion.get('/api/v1/publicaciones/:id', function (peticion, respuesta) {
 aplicacion.listen(8080, function(){
   console.log("Servidor iniciado")
 })
+
