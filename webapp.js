@@ -2,6 +2,10 @@ const express = require('express')
 const aplicacion = express()
 const mysql = require('mysql')
 const bodyParser = require('body-parser')
+const flash = require('express-flash')
+const session = require('express-session')
+aplicacion.use(session({ secret: 'token-muy-secreto', resave: true, saveUninitialized: true }));
+aplicacion.use(flash())
 
 var pool = mysql.createPool({
   connectionLimit: 20,
@@ -13,6 +17,12 @@ var pool = mysql.createPool({
 
 aplicacion.use(bodyParser.json())
 aplicacion.use(bodyParser.urlencoded({ extended: true }))
+
+aplicacion.get('/', function(peticion, respuesta){
+  pool.getConnection(function(err, connection){
+
+  })
+})
 
 // GET /api/v1/publicaciones
 // GET /api/v1/publicaciones?busqueda=<palabra>
@@ -52,7 +62,7 @@ aplicacion.get('/api/v1/publicaciones/:id', function (peticion, respuesta) {
       }
       else{
         respuesta.status(404)
-        respuesta.send({errors: ["No se encuentra esa tarea"]})
+        respuesta.send({errors: ["No se encuentra esa publicación"]})
       }
     })
     connection.release()
@@ -81,6 +91,57 @@ aplicacion.get('/api/v1/autores/:id', function (peticion, respuesta) {
       else{
         respuesta.status(404)
         respuesta.send({errors: ["No se encuentra el autor"]})
+      }
+    })
+    connection.release()
+  })
+})
+
+// POST /api/v1/autores
+aplicacion.post('/api/v1/autores', function (peticion, respuesta) {
+  pool.getConnection(function(err, connection) {
+    const email = peticion.body.email.toLowerCase().trim()
+    const pseudonimo = peticion.body.pseudonimo.trim()
+    const contrasena = peticion.body.contrasena
+
+    const consultaEmail = `
+      SELECT *
+      FROM autores
+      WHERE email = ${connection.escape(email)}
+    `
+    connection.query(consultaEmail, function (error, filas, campos) {
+      if (filas.length > 0) {
+        respuesta.status(201)
+        respuesta.json({data: filas[0]})
+      }
+      else {
+        const consultaPseudonimo = `
+          SELECT *
+          FROM autores
+          WHERE pseudonimo = ${connection.escape(pseudonimo)}
+        `
+        connection.query(consultaPseudonimo, function (error, filas, campos) {
+          if (filas.length > 0) {
+            respuesta.status(201)
+            respuesta.json({data: filas[0]})
+          }
+          else {
+            const consulta = `
+                                INSERT INTO
+                                autores
+                                (email, contrasena, pseudonimo)
+                                VALUES (
+                                  ${connection.escape(email)},
+                                  ${connection.escape(contrasena)},
+                                  ${connection.escape(pseudonimo)}
+                                )
+                              `
+            connection.query(consulta, function (error, filas, campos) {
+              respuesta.status(201)
+              respuesta.json({data: filas[0]})
+            })
+          }
+        })
       }
     })
     connection.release()
