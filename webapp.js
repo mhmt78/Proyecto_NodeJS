@@ -4,8 +4,6 @@ const mysql = require('mysql')
 const bodyParser = require('body-parser')
 const flash = require('express-flash')
 const session = require('express-session')
-aplicacion.use(session({ secret: 'token-muy-secreto', resave: true, saveUninitialized: true }));
-aplicacion.use(flash())
 
 var pool = mysql.createPool({
   connectionLimit: 20,
@@ -17,11 +15,12 @@ var pool = mysql.createPool({
 
 aplicacion.use(bodyParser.json())
 aplicacion.use(bodyParser.urlencoded({ extended: true }))
+aplicacion.use(session({ secret: 'token-muy-secreto', resave: true, saveUninitialized: true }));
+aplicacion.use(flash())
+
 
 aplicacion.get('/', function(peticion, respuesta){
-  pool.getConnection(function(err, connection){
-
-  })
+  respuesta.send('Hola Mundo');
 })
 
 // GET /api/v1/publicaciones
@@ -103,12 +102,11 @@ aplicacion.post('/api/v1/autores', function (peticion, respuesta) {
     const email = peticion.body.email.toLowerCase().trim()
     const pseudonimo = peticion.body.pseudonimo.trim()
     const contrasena = peticion.body.contrasena
-
     const consultaEmail = `
       SELECT *
       FROM autores
       WHERE email = ${connection.escape(email)}
-    `
+    `;
     connection.query(consultaEmail, function (error, filas, campos) {
       if (filas.length > 0) {
         respuesta.status(201)
@@ -119,7 +117,7 @@ aplicacion.post('/api/v1/autores', function (peticion, respuesta) {
           SELECT *
           FROM autores
           WHERE pseudonimo = ${connection.escape(pseudonimo)}
-        `
+        `;
         connection.query(consultaPseudonimo, function (error, filas, campos) {
           if (filas.length > 0) {
             respuesta.status(201)
@@ -135,7 +133,7 @@ aplicacion.post('/api/v1/autores', function (peticion, respuesta) {
                                   ${connection.escape(contrasena)},
                                   ${connection.escape(pseudonimo)}
                                 )
-                              `
+                              `;
             connection.query(consulta, function (error, filas, campos) {
               respuesta.status(201)
               respuesta.json({data: filas[0]})
@@ -147,6 +145,55 @@ aplicacion.post('/api/v1/autores', function (peticion, respuesta) {
     connection.release()
   })
 })
+
+// POST /api/v1/publicaciones?email=<email>&contrasena=<contrasena>
+aplicacion.post('/api/v1/publicaciones', function (peticion, respuesta) {
+  const email = peticion.body.email.toLowerCase().trim()
+  const contrasena = peticion.body.contrasena
+  const titulo = peticion.body.titulo
+  const resumen = peticion.body.resumen
+  const contenido = peticion.body.contenido
+  
+  pool.getConnection(function (err, connection) {
+    const consultaUsserPass = `
+      SELECT *
+      FROM autores
+      WHERE
+      email = ${connection.escape(email)} AND
+      contrasena = ${connection.escape(contrasena)}
+      `;
+  
+  connection.query(consultaUsserPass, (error, filas, campos) => {
+    if (filas.length <= 0) {
+      respuesta.status(404)
+      respuesta.json({data: filas[0]})
+    } else {
+      let usuario = filas[0]
+      const consulta = `
+        INSERT INTO
+        publicaciones
+        (titulo, resumen, contenido, autor_id)
+        VALUES (
+          ${connection.escape(titulo)},
+          ${connection.escape(resumen)},
+          ${connection.escape(contenido)},
+          ${connection.escape(usuario.id)}
+        )
+        `;
+        connection.query(consulta, (error, filas, campos) => {
+          const nuevoId = filas.insertId
+          const queryConsulta = `SELECT * FROM publicaciones WHERE id=${connection.escape(nuevoId)}`
+          connection.query(queryConsulta, function (error, filas, campos) {
+            respuesta.status(201)
+            respuesta.json({data: filas[0]})
+          })
+      })
+    }
+  })
+    connection.release()
+  })
+})
+  
 
 aplicacion.listen(8080, function(){
   console.log("Servidor iniciado")
