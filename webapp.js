@@ -194,8 +194,40 @@ aplicacion.post('/api/v1/publicaciones', function (peticion, respuesta) {
   })
 })
   
+//DELETE /api/v1/publicaciones/<id>?email=<email>&contrasena=<contrasena></contrasena>
+aplicacion.delete('/api/v1/publicaciones/:id', function (peticion, respuesta) {
+
+  pool.getConnection(function(err, connection) {
+
+    const query = `SELECT * FROM publicaciones WHERE id=${connection.escape(peticion.params.id)}`
+    connection.query(query, function (error, filas, campos) {
+
+      if(filas.length > 0){
+        const queryDelete = `DELETE FROM publicaciones WHERE id=${peticion.params.id}`
+        connection.query(queryDelete, function (error, filas, campos) {
+          respuesta.status(204)
+          respuesta.json()
+        })
+
+      }
+      else{
+        respuesta.status(404)
+        respuesta.send({errors: ["No se encuentra esa tarea"]})
+      }
+
+    })
+    connection.release()
+
+  })
+
+})
+
+  
+
 
 aplicacion.listen(8080, function(){
   console.log("Servidor iniciado")
 })
+
+
 
