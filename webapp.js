@@ -20,7 +20,15 @@ aplicacion.use(flash())
 
 
 aplicacion.get('/', function(peticion, respuesta){
-  respuesta.send('Hola Mundo');
+  respuesta.send('BLOG DE VIAJES');
+})
+
+aplicacion.get('/api', function(peticion, respuesta){
+  respuesta.send('Miguel Mendoza Ticllacuri');
+})
+
+aplicacion.get('/api/v1', function(peticion, respuesta){
+  respuesta.send('Contenido de Autores y Publicaciones');
 })
 
 // GET /api/v1/publicaciones
@@ -148,6 +156,7 @@ aplicacion.post('/api/v1/autores', function (peticion, respuesta) {
 
 // POST /api/v1/publicaciones?email=<email>&contrasena=<contrasena>
 aplicacion.post('/api/v1/publicaciones', function (peticion, respuesta) {
+ 
   const email = peticion.body.email.toLowerCase().trim()
   const contrasena = peticion.body.contrasena
   const titulo = peticion.body.titulo
